@@ -135,6 +135,10 @@ Try these after indexing the sample documents:
 
 ## Deployment (Streamlit Community Cloud)
 
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full step-by-step guide.
+
+Quick summary:
+
 1. Push this repo to GitHub
 2. Go to [share.streamlit.io](https://share.streamlit.io)
 3. Connect your GitHub account and select this repository
