@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import google.generativeai as genai
 import chromadb
-from chromadb.utils.embedding_functions import GoogleGenerativeAiEmbeddingFunction
+import google.generativeai as genai
 
 from src.config import (
     COLLECTION_NAME,
@@ -27,20 +26,12 @@ SYSTEM_PROMPT = (
 
 
 def _get_collection(db_path: str = DB_PATH):
-    """Load the ChromaDB collection with Gemini embeddings."""
-    if not GEMINI_API_KEY:
-        raise ValueError(
-            "GEMINI_API_KEY is not set. Add it to your .env file or Streamlit secrets."
-        )
+    """Load the ChromaDB collection."""
 
     client = chromadb.PersistentClient(path=db_path)
-    embedding_fn = GoogleGenerativeAiEmbeddingFunction(
-        api_key=GEMINI_API_KEY,
-        model_name=EMBEDDING_MODEL,
-    )
+
     return client.get_collection(
-        name=COLLECTION_NAME,
-        embedding_function=embedding_fn,
+        name=COLLECTION_NAME
     )
 
 
@@ -49,56 +40,109 @@ def query_rag_pipeline(
     db_path: str = DB_PATH,
     k: int = TOP_K,
 ) -> dict:
-    """Search the vector DB, build a grounded prompt, and query Gemini."""
+    """Search vector DB and generate grounded answer."""
+
+    if not GEMINI_API_KEY:
+        raise ValueError(
+            "GEMINI_API_KEY is not configured."
+        )
+
+    genai.configure(api_key=GEMINI_API_KEY)
+
     collection = _get_collection(db_path)
 
-    results = collection.query(query_texts=[user_query], n_results=k)
+    # Create embedding for user query
+    embedding_response = genai.embed_content(
+        model=EMBEDDING_MODEL,
+        content=user_query,
+        task_type="retrieval_query",
+    )
 
-    if not results["documents"] or not results["documents"][0]:
+    query_embedding = embedding_response["embedding"]
+
+    # Search similar chunks
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=k,
+    )
+
+    if (
+        not results["documents"]
+        or not results["documents"][0]
+    ):
         return {
             "answer": (
-                "I am sorry, but the provided documents do not contain "
-                "the answer to your question."
+                "I am sorry, but the provided documents "
+                "do not contain the answer to your question."
             ),
             "citations": [],
             "raw_context": [],
         }
 
-    context_blocks: list[str] = []
-    citations: list[str] = []
+    context_blocks = []
+    citations = []
 
-    for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+    for doc, meta in zip(
+        results["documents"][0],
+        results["metadatas"][0],
+    ):
+
         source_name = meta.get("source", "unknown")
         page_num = meta.get("page", "?")
-        citation_str = f"Source: {source_name}, Page: {page_num}"
 
-        context_blocks.append(f"[{citation_str}]\nContext: {doc}")
-        citations.append(citation_str)
+        citation = (
+            f"Source: {source_name}, "
+            f"Page: {page_num}"
+        )
+
+        context_blocks.append(
+            f"[{citation}]\nContext: {doc}"
+        )
+
+        citations.append(citation)
 
     context_payload = "\n\n---\n\n".join(context_blocks)
 
-    prompt = (
-        f"{SYSTEM_PROMPT}\n\n"
-        f"CONTEXT INFORMATION:\n{context_payload}\n\n"
-        f"USER QUESTION: {user_query}\n\n"
-        f"GROUNDED ANSWER:"
+    prompt = f"""
+{SYSTEM_PROMPT}
+
+CONTEXT INFORMATION:
+{context_payload}
+
+USER QUESTION:
+{user_query}
+
+GROUNDED ANSWER:
+"""
+
+    model = genai.GenerativeModel(
+        GENERATION_MODEL
     )
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel(GENERATION_MODEL)
     response = model.generate_content(prompt)
 
+    answer = (
+        response.text
+        if hasattr(response, "text")
+        else "No response generated."
+    )
+
     return {
-        "answer": response.text,
+        "answer": answer,
         "citations": list(dict.fromkeys(citations)),
         "raw_context": results["documents"][0],
     }
 
 
-def is_database_ready(db_path: str = DB_PATH) -> bool:
-    """Check whether the vector database has been indexed."""
+def is_database_ready(
+    db_path: str = DB_PATH
+) -> bool:
+    """Check whether vector DB exists."""
+
     try:
         collection = _get_collection(db_path)
+
         return collection.count() > 0
+
     except Exception:
         return False
