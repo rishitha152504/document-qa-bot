@@ -13,7 +13,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 DB_PATH = str(PROJECT_ROOT / "db")
 
 # Gemini models
-EMBEDDING_MODEL = "models/text-embedding-004"
+EMBEDDING_MODEL = "models/embedding-001"
 GENERATION_MODEL = "gemini-2.0-flash"
 
 # ChromaDB
