@@ -1,0 +1,16 @@
+Acme Analytics Platform — Technical FAQ
+
+Q: What databases are supported?
+A: PostgreSQL, MySQL, SQL Server, Snowflake, BigQuery, and Redshift.
+
+Q: What is the maximum data refresh frequency?
+A: Real-time streaming for supported connectors; minimum batch interval is 5 minutes.
+
+Q: Does the platform support custom ML models?
+A: Yes. Enterprise plan customers can deploy custom models via the ML API endpoint.
+
+Q: What SLAs are offered?
+A: Business plan: 99.5% uptime. Enterprise plan: 99.9% uptime with financial credits.
+
+Q: How is data encrypted?
+A: AES-256 at rest, TLS 1.3 in transit. Keys managed via AWS KMS or Azure Key Vault.

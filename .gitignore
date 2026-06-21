@@ -1,0 +1,27 @@
+# Environment & secrets
+.env
+venv/
+.venv/
+env/
+
+# Vector database (regenerated via ingest.py — commit db/ after indexing for cloud deploy)
+# db/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
